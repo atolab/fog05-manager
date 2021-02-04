@@ -1,2 +1,2 @@
-# fog05-manager
-Eclipse fog05 Manager consumes K8s Custom Resource Definitions for fog05
+# fog05 Manager
+fog05 Manager is a component of the fog05 Kubernetes Control Plane. It is responsible for consuming Control Plane CRDs for the purposes of deploying fog05 FDUs and Entities via Kubernetes clusters.
