@@ -1,0 +1,46 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - nodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fdu.fog05.io
+  resources:
+  - fdus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fdu.fog05.io
+  resources:
+  - fdus/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - fdu.fog05.io
+  resources:
+  - fdus/status
+  verbs:
+  - get
+  - patch
+  - update

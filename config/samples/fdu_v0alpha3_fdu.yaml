@@ -1,0 +1,7 @@
+apiVersion: fdu.fog05.io/v0alpha3
+kind: FDU
+metadata:
+  name: fdu-sample
+spec:
+  # Add fields here
+  foo: bar

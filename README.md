@@ -3,12 +3,14 @@ fog05 Manager is a component of the fog05 Kubernetes Control Plane. It is respon
 
 
 
+It leverages `operator-sdk`
+https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#build-and-run-the-operator
+
 ## build
 
 ```
 
-$ go mod vendor
-$ go build *.go
+$ make
 
 ```
 
@@ -16,7 +18,7 @@ $ go build *.go
 ## run
 
 ```
-
-$ ./controller
+$ make install
+$ make run ENABLE_WEBHOOKS=false
 
 ```

@@ -1,137 +1,105 @@
 /*
-* Copyright (c) 2018,2021 ADLINK Technology Inc.
-*
-* This program and the accompanying materials are made available under the
-* terms of the Eclipse Public License 2.0 which is available at
-* http://www.eclipse.org/legal/epl-2.0, or the Apache Software License 2.0
-* which is available at https://www.apache.org/licenses/LICENSE-2.0.
-*
-* SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
-* Contributors:
-*   ADLINK fog05 team, <fog05@adlink-labs.tech>
- */
+Copyright 2021.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package main
 
 import (
+	"flag"
 	"os"
-	"os/signal"
-	"syscall"
 
-	fduclientset "github.com/atolab/fog05-manager/pkg/client/clientset/versioned"
-	fduinformer_v1 "github.com/atolab/fog05-manager/pkg/client/informers/externalversions/fdu/v1"
-	log "github.com/sirupsen/logrus"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/workqueue"
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	fduv0alpha3 "github.com/eclipse-fog05/fog05-manager/apis/fdu/v0alpha3"
+	fducontrollers "github.com/eclipse-fog05/fog05-manager/controllers/fdu"
+	// +kubebuilder:scaffold:imports
 )
 
-// retrieve the Kubernetes cluster client from outside of the cluster
-func getKubernetesClient() (kubernetes.Interface, fduclientset.Interface) {
-	// construct the path to resolve to `~/.kube/config`
-	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
+var (
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)
 
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		log.Fatalf("getClusterConfig: %v", err)
-	}
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	// generate the client based off of the config
-	client, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("getClusterConfig: %v", err)
-	}
-
-	fduClient, err := fduclientset.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("getClusterConfig: %v", err)
-	}
-
-	log.Info("Successfully constructed k8s client")
-	return client, fduClient
+	utilruntime.Must(fduv0alpha3.AddToScheme(scheme))
+	// +kubebuilder:scaffold:scheme
 }
 
-// main code path
 func main() {
-	// get the Kubernetes client for connectivity
-	client, fduClient := getKubernetesClient()
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
 
-	// retrieve our custom resource informer which was generated from
-	// the code generator and pass it the custom resource client, specifying
-	// we should be looking through all namespaces for listing and watching
-	informer := fduinformer_v1.NewFDUInformer(
-		fduClient,
-		meta_v1.NamespaceAll,
-		0,
-		cache.Indexers{},
-	)
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// create a new queue so that when the informer gets a resource that is either
-	// a result of listing or watching, we can add an idenfitying key to the queue
-	// so that it can be handled in the handler
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-
-	// add event handlers to handle the three types of events for resources:
-	//  - adding new resources
-	//  - updating existing resources
-	//  - deleting resources
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			// convert the resource object into a key (in this case
-			// we are just doing it in the format of 'namespace/name')
-			key, err := cache.MetaNamespaceKeyFunc(obj)
-			log.Infof("Add FDU: %s", key)
-			if err == nil {
-				// add the key to the queue for the handler to get
-				queue.Add(key)
-			}
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			key, err := cache.MetaNamespaceKeyFunc(newObj)
-			log.Infof("Update FDU: %s", key)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			// DeletionHandlingMetaNamsespaceKeyFunc is a helper function that allows
-			// us to check the DeletedFinalStateUnknown existence in the event that
-			// a resource was deleted but it is still contained in the index
-			//
-			// this then in turn calls MetaNamespaceKeyFunc
-			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-			log.Infof("Delete FDU: %s", key)
-			if err == nil {
-				queue.Add(key)
-			}
-		},
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		Port:                   9443,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "1c34dba7.fog05.io",
 	})
-
-	// construct the Controller object which has all of the necessary components to
-	// handle logging, connections, informing (listing and watching), the queue,
-	// and the handler
-	controller := Controller{
-		logger:    log.NewEntry(log.New()),
-		clientset: client,
-		informer:  informer,
-		queue:     queue,
-		handler:   &TestHandler{},
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
-	// use a channel to synchronize the finalization for a graceful shutdown
-	stopCh := make(chan struct{})
-	defer close(stopCh)
+	if err = (&fducontrollers.FDUReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("fdu").WithName("FDU"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FDU")
+		os.Exit(1)
+	}
+	// +kubebuilder:scaffold:builder
 
-	// run the controller loop to process items
-	go controller.Run(stopCh)
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
-	// use a channel to handle OS signals to terminate and gracefully shut
-	// down processing
-	sigTerm := make(chan os.Signal, 1)
-	signal.Notify(sigTerm, syscall.SIGTERM)
-	signal.Notify(sigTerm, syscall.SIGINT)
-	<-sigTerm
+	setupLog.Info("starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 }

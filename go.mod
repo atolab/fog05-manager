@@ -1,23 +1,13 @@
-// This is a generated file. Do not edit directly.
-
-module github.com/atolab/fog05-manager
+module github.com/eclipse-fog05/fog05-manager
 
 go 1.15
 
 require (
-	github.com/eclipse-fog05/fog05-go v0.2.1-0.20210204113306-cbb462dfabaf
-	github.com/sirupsen/logrus v1.7.0
-	k8s.io/api v0.0.0-20210202201024-9f65ac4826aa // indirect
-	k8s.io/apimachinery v0.0.0-20210202200849-9e39a13d2cab
-	k8s.io/client-go v0.0.0-20210202201239-3147a30d7bb5
-	k8s.io/code-generator v0.0.0-20210202200712-b6eef682227f
-	k8s.io/klog/v2 v2.5.0 // indirect
-
-)
-
-replace (
-	k8s.io/api => k8s.io/api v0.0.0-20210202201024-9f65ac4826aa
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20210202200849-9e39a13d2cab
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20210202201239-3147a30d7bb5
-	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20210202200712-b6eef682227f
+	github.com/eclipse-fog05/fog05-go v0.2.1-0.20210204150117-38b65a34ee68
+	github.com/go-logr/logr v0.4.0
+	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/gomega v1.10.2
+	k8s.io/apimachinery v0.19.2
+	k8s.io/client-go v0.19.2
+	sigs.k8s.io/controller-runtime v0.7.0
 )
