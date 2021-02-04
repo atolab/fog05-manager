@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: fdus.fog05.io
 spec:
-  group: fdu.fog05.io
+  group: fog05.io
   version: v1
   names:
     kind: FDU

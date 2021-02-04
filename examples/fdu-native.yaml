@@ -1,4 +1,4 @@
-apiVersion: fdu.fog05.io/v1
+apiVersion: fog05.io/v1
 kind: FDU
 metadata:
   name: test-ping-fdu

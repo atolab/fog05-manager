@@ -13,4 +13,4 @@
 
 package fdu
 
-const GroupName = "fdu.fog05.io"
+const GroupName = "fog05.io"
