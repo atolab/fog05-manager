@@ -3,7 +3,7 @@ module github.com/eclipse-fog05/fog05-manager
 go 1.15
 
 require (
-	github.com/eclipse-fog05/fog05-go v0.2.1-0.20210204150117-38b65a34ee68
+	github.com/eclipse-fog05/fog05-go v0.2.1-0.20210208110623-96789f4f2bec
 	github.com/go-logr/logr v0.4.0
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2

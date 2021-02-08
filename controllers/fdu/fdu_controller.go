@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	fduapi "github.com/eclipse-fog05/fog05-go/pkg/apis/fim/v03alpha1/pb"
 	fduv0alpha3 "github.com/eclipse-fog05/fog05-manager/apis/fdu/v0alpha3"
 )
 
@@ -63,6 +64,12 @@ func (r *FDUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		log.Error(err, fmt.Sprintf("Failed to get FDU for %+v", req))
 		return ctrl.Result{}, err
 	}
+
+	res, err := fduapi.FDUAPI.OnboardFDU(fdu.Spec)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	log.Info(fmt.Sprintf("Res: %+v", res))
 
 	return ctrl.Result{}, nil
 }
